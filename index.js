@@ -9,12 +9,14 @@ const SignalTypes = () => {
         joinRoom: "JoinRoom",
         leaveRoom: "LeaveRoom",
         startCall: "StartCall",
+        endCall: "EndCall",
         callResponse: "CallResponse",
         offer: "Offer",
         answer: "Answer",
-        iceCandidate: "IceCandidate",
+        ice: "Ice",
         roomStatus: "RoomStatus",
-        leaveAllRooms: "LeaveAllRooms"
+        leaveAllRooms: "LeaveAllRooms",
+        newSession:"NewSession",
     }
 
 }
@@ -37,7 +39,7 @@ const createChatRoom = (roomName, username, connection) => {
         return
     }
     leaveUserFromAllRooms(username)
-    rooms.push({roomName: roomName, owner: username, members: [{username: username, connection: connection}]})
+    rooms.push({roomName: roomName, owner: username, members: [{username: username, conn: connection}]})
     updateRoomsForUsers()
     console.log(rooms)
 }
@@ -63,10 +65,9 @@ const joinChatRoom = (roomName, username, connection) => {
         return;
     }
 
-    room.members.push({username: username, connection: connection})
+    sendJoiningNewSessionToOtherRoomMembers(username,room)
+    room.members.push({username: username, conn: connection})
     updateRoomsForUsers()
-
-    console.log(rooms)
 }
 
 const leaveChatRoom = (roomName, username) => {
@@ -128,12 +129,8 @@ webSocket.on('request', (req) => {
                 let userToCall = findUser(data.target)
 
                 if (userToCall) {
-                    sendDataToUser(connection, {
-                        type: SignalTypes().callResponse, data: "user is ready for call"
-                    })
-                } else {
-                    sendDataToUser(connection, {
-                        type: SignalTypes().callResponse, data: "user is not online"
+                    sendDataToUser(userToCall.conn, {
+                        type: SignalTypes().startCall,name: data.name
                     })
                 }
 
@@ -146,7 +143,7 @@ webSocket.on('request', (req) => {
                     sendDataToUser(userToReceiveOffer.conn, {
                         type: SignalTypes().offer,
                         name: data.name,
-                        data: data.data.sdp
+                        data: data.data,
                     })
                 }
                 break
@@ -157,22 +154,18 @@ webSocket.on('request', (req) => {
                     sendDataToUser(userToReceiveAnswer.conn, {
                         type: SignalTypes().answer,
                         name: data.name,
-                        data: data.data.sdp
+                        data: data.data
                     })
                 }
                 break
 
-            case SignalTypes().iceCandidate:
+            case SignalTypes().ice:
                 let userToReceiveIceCandidate = findUser(data.target)
                 if (userToReceiveIceCandidate) {
                     sendDataToUser(userToReceiveIceCandidate.conn, {
-                        type: SignalTypes().iceCandidate,
+                        type: SignalTypes().ice,
                         name: data.name,
-                        data: {
-                            sdpMLineIndex: data.data.sdpMLineIndex,
-                            sdpMid: data.data.sdpMid,
-                            sdpCandidate: data.data.sdpCandidate
-                        }
+                        data: data.data
                     })
                 }
                 break
@@ -199,6 +192,12 @@ const updateRoomsForUsers = () => {
     console.log(getRoomDetails())
     users.forEach(user => {
         sendDataToUser(user.conn, {type: SignalTypes().roomStatus, data: getRoomDetails()})
+    })
+}
+
+const sendJoiningNewSessionToOtherRoomMembers = (username,room) =>{
+    room.members.forEach( user => {
+        sendDataToUser(user.conn, {type: SignalTypes().newSession,name:username})
     })
 }
 
