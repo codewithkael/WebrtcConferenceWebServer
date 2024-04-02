@@ -21,7 +21,7 @@ const SignalTypes = () => {
 
 }
 
-server.listen(3000, () => {
+server.listen(4000, () => {
 
 })
 
@@ -29,6 +29,32 @@ const webSocket = new Socket({httpServer: server})
 
 const users = []
 const rooms = []
+
+setInterval(function() {
+    // Iterate over the rooms
+    rooms.forEach((room, roomIndex) => {
+        // Filter out disconnected members
+        room.members = room.members.filter(member => {
+            const isConnected = member.conn.connected; // Assuming .connected can be used to check the connection status
+            if (!isConnected) {
+                // Remove the user from the users array if not connected
+                const userIndex = users.findIndex(user => user.conn === member.conn);
+                if (userIndex !== -1) {
+                    users.splice(userIndex, 1);
+                }
+            }
+            return isConnected;
+        });
+
+        // If a room is empty after filtering, remove it
+        if (room.members.length === 0) {
+            rooms.splice(roomIndex, 1);
+        }
+    });
+
+    // Optionally, broadcast the updated rooms list to all users
+    updateRoomsForUsers();
+}, 10000);
 
 
 const createChatRoom = (roomName, username, connection) => {
@@ -44,14 +70,6 @@ const createChatRoom = (roomName, username, connection) => {
     console.log(rooms)
 }
 
-const removeChatRoom = (roomName) => {
-    const index = rooms.findIndex(object => object.roomName === roomName);
-    if (index !== -1) {
-        rooms.splice(index, 1)
-    }
-    updateRoomsForUsers()
-
-}
 const joinChatRoom = (roomName, username, connection) => {
     leaveUserFromAllRooms(username)
     const room = findRoom(roomName)
