@@ -2,6 +2,11 @@ const http = require("http")
 const Socket = require("websocket").server
 const server = http.createServer(() => {
 })
+
+server.listen(4000, () => {
+})
+const webSocket = new Socket({httpServer: server})
+
 const SignalTypes = () => {
     return {
         storeUser: "StoreUser",
@@ -16,21 +21,14 @@ const SignalTypes = () => {
         ice: "Ice",
         roomStatus: "RoomStatus",
         leaveAllRooms: "LeaveAllRooms",
-        newSession:"NewSession",
+        newSession: "NewSession",
     }
-
 }
-
-server.listen(4000, () => {
-
-})
-
-const webSocket = new Socket({httpServer: server})
 
 const users = []
 const rooms = []
 
-setInterval(function() {
+setInterval(function () {
     // Iterate over the rooms
     rooms.forEach((room, roomIndex) => {
         // Filter out disconnected members
@@ -61,13 +59,11 @@ const createChatRoom = (roomName, username, connection) => {
 
     const room = findRoom(roomName)
     if (room) {
-        console.log(rooms)
         return
     }
     leaveUserFromAllRooms(username)
     rooms.push({roomName: roomName, owner: username, members: [{username: username, conn: connection}]})
     updateRoomsForUsers()
-    console.log(rooms)
 }
 
 const joinChatRoom = (roomName, username, connection) => {
@@ -78,12 +74,10 @@ const joinChatRoom = (roomName, username, connection) => {
     }
     const user = room.members.find(it => it.username === username)
     if (user) {
-        console.log(user)
-        console.log("user exists")
         return;
     }
 
-    sendJoiningNewSessionToOtherRoomMembers(username,room)
+    sendJoiningNewSessionToOtherRoomMembers(username, room)
     room.members.push({username: username, conn: connection})
     updateRoomsForUsers()
 }
@@ -93,7 +87,6 @@ const leaveChatRoom = (roomName, username) => {
     if (room) {
         const userIndex = room.members.findIndex(object => object.username === username);
         room.members.splice(userIndex, 1)
-        console.log(rooms)
     }
     updateRoomsForUsers()
 }
@@ -107,7 +100,6 @@ webSocket.on('request', (req) => {
 
     connection.on('message', (message) => {
         const data = JSON.parse(message.utf8Data)
-        console.log(data);
         const user = findUser(data.name)
 
         switch (data.type) {
@@ -148,7 +140,7 @@ webSocket.on('request', (req) => {
 
                 if (userToCall) {
                     sendDataToUser(userToCall.conn, {
-                        type: SignalTypes().startCall,name: data.name
+                        type: SignalTypes().startCall, name: data.name
                     })
                 }
 
@@ -159,9 +151,7 @@ webSocket.on('request', (req) => {
 
                 if (userToReceiveOffer) {
                     sendDataToUser(userToReceiveOffer.conn, {
-                        type: SignalTypes().offer,
-                        name: data.name,
-                        data: data.data,
+                        type: SignalTypes().offer, name: data.name, data: data.data,
                     })
                 }
                 break
@@ -170,9 +160,7 @@ webSocket.on('request', (req) => {
                 let userToReceiveAnswer = findUser(data.target)
                 if (userToReceiveAnswer) {
                     sendDataToUser(userToReceiveAnswer.conn, {
-                        type: SignalTypes().answer,
-                        name: data.name,
-                        data: data.data
+                        type: SignalTypes().answer, name: data.name, data: data.data
                     })
                 }
                 break
@@ -181,9 +169,7 @@ webSocket.on('request', (req) => {
                 let userToReceiveIceCandidate = findUser(data.target)
                 if (userToReceiveIceCandidate) {
                     sendDataToUser(userToReceiveIceCandidate.conn, {
-                        type: SignalTypes().ice,
-                        name: data.name,
-                        data: data.data
+                        type: SignalTypes().ice, name: data.name, data: data.data
                     })
                 }
                 break
@@ -207,15 +193,14 @@ const getRoomDetails = () => {
 }
 
 const updateRoomsForUsers = () => {
-    console.log(getRoomDetails())
     users.forEach(user => {
         sendDataToUser(user.conn, {type: SignalTypes().roomStatus, data: getRoomDetails()})
     })
 }
 
-const sendJoiningNewSessionToOtherRoomMembers = (username,room) =>{
-    room.members.forEach( user => {
-        sendDataToUser(user.conn, {type: SignalTypes().newSession,name:username})
+const sendJoiningNewSessionToOtherRoomMembers = (username, room) => {
+    room.members.forEach(user => {
+        sendDataToUser(user.conn, {type: SignalTypes().newSession, name: username})
     })
 }
 
@@ -240,7 +225,6 @@ const sendDataToUser = (connection, data) => {
 
 const findUser = username => {
     for (let i = 0; i < users.length; i++) {
-        if (users[i].name === username)
-            return users[i]
+        if (users[i].name === username) return users[i]
     }
 }
